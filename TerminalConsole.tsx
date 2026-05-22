@@ -1,20 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from "react"
 import { addPropertyControls, ControlType, RenderTarget } from "framer"
 
-// ─── Phases ────────────────────────────────────────────────────────────────────
 const PHASES = [
-    {
-        text: "Hello, I am Rhiddhit Paul.\nI am a product designer, music producer and DJ.\n\nKnow more about me?",
-        prompt: true,
-    },
-    {
-        input: "Y",
-        text: "I care about inclusivity and accessibility, and believe that as designers our duty is to help people experience deeper, richer emotions.",
-    },
-    {
-        text: "I have designed for Microsoft, Amazon, HP and more.",
-        logos: true,
-    },
+    { text: "Hello, I am Rhiddhit Paul.\nI am a product designer, music producer and DJ.\n\nKnow more about me?", prompt: true },
+    { input: "Y", text: "I care about inclusivity and accessibility, and believe that as designers our duty is to help people experience deeper, richer emotions." },
+    { text: "I have designed for Microsoft, Amazon, HP and more.", logos: true },
 ]
 
 const SASSY_RESPONSE = "Too bad. I'll tell you anyway."
@@ -22,7 +12,6 @@ const AUDIO_URL = "https://files.catbox.moe/myys1b.mp3"
 const GLITCH_CHARS = "▓░▒█▄▀▌▐■□◆◇▲▼◉⊕⊗01╗╝╔╚╬╠╣║═"
 const STUTTER_BPM = 128
 
-// ─── CV Data ───────────────────────────────────────────────────────────────────
 const EXPERIENCE = [
     { role: "Founder", company: "Transient", dates: "2026 – Now", note: "Music analysis desktop app for producers. Electron + WebAssembly audio pipeline (4× faster than Python/librosa), real-time BPM / key / chord analysis, hardware synth-themed UI." },
     { role: "Senior Product Designer L2", company: "HumanX", dates: "2024 – Now", note: "Amazon Now (launched across 7 markets), HP kiosk. Built NIMITH design system from scratch." },
@@ -41,54 +30,24 @@ const RECOGNITION = [
     { title: "Volume Zero Micro Housing — Global Top 10", detail: "International competition · 2019" },
 ]
 
-// ─── Projects ──────────────────────────────────────────────────────────────────
 const PROJECTS = [
-    {
-        index: "01",
-        company: "Amazon Now",
-        title: "Savings — helping customers spend less on every order",
-        tags: ["case-study", "e-commerce", "ux"],
-        link: "/amazonsavings",
-    },
-    {
-        index: "02",
-        company: "Finhaat",
-        title: "Claims UX — helping agents know policyholders better",
-        tags: ["case-study", "fintech"],
-        link: "/cpi",
-    },
-    {
-        index: "03",
-        company: "Microsoft India R&D",
-        title: "Teams Activity Feed — mental-health-centric AI",
-        tags: ["internship", "ai", "wellbeing"],
-        link: "/project-3",
-    },
-    {
-        index: "04",
-        company: "HP",
-        title: "Self-service retail kiosk experience",
-        tags: ["product", "hardware", "retail"],
-        link: "/project-4",
-    },
+    { index: "01", company: "Amazon Now", title: "Savings — helping customers spend less on every order", tags: ["case-study", "e-commerce", "ux"], link: "/amazonsavings" },
+    { index: "02", company: "Finhaat", title: "Claims UX — helping agents know policyholders better", tags: ["case-study", "fintech"], link: "/cpi" },
+    { index: "03", company: "Microsoft India R&D", title: "Teams Activity Feed — mental-health-centric AI", tags: ["internship", "ai", "wellbeing"], link: "/project-3" },
+    { index: "04", company: "HP", title: "Self-service retail kiosk experience", tags: ["product", "hardware", "retail"], link: "/project-4" },
 ]
 
-// ─── Panel line type ───────────────────────────────────────────────────────────
 type PanelLine = {
-    text: string; color: string; opacity?: number
-    letterSpacing?: string; textTransform?: React.CSSProperties["textTransform"]
-    marginBottom?: number; paddingBottom?: number; borderBottom?: string; isBlank?: boolean
+    text: string; color: string; opacity?: number; letterSpacing?: string
+    textTransform?: React.CSSProperties["textTransform"]; marginBottom?: number
+    paddingBottom?: number; borderBottom?: string; isBlank?: boolean
 }
 
 function buildLines(accentColor: string): PanelLine[] {
     const acc = accentColor
     const lines: PanelLine[] = []
-    const header = (text: string): PanelLine => ({
-        text, color: acc, opacity: 0.5, letterSpacing: "0.18em", textTransform: "uppercase",
-        marginBottom: 6, paddingBottom: 8, borderBottom: "1px solid rgba(245,245,245,0.08)",
-    })
+    const header = (text: string): PanelLine => ({ text, color: acc, opacity: 0.5, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 6, paddingBottom: 8, borderBottom: "1px solid rgba(245,245,245,0.08)" })
     const blank = (): PanelLine => ({ text: "", color: "transparent", isBlank: true })
-
     lines.push(header("experience")); lines.push(blank())
     for (let i = 0; i < EXPERIENCE.length; i++) {
         const e = EXPERIENCE[i]
@@ -117,8 +76,6 @@ function buildLines(accentColor: string): PanelLine[] {
     return lines
 }
 
-// ─── Audio helpers ─────────────────────────────────────────────────────────────
-// ─── Window singleton ──────────────────────────────────────────────────────────
 const AUDIO_CHAIN_VERSION = 6
 declare global {
     interface Window {
@@ -131,7 +88,6 @@ declare global {
 
 function getAudio(): HTMLAudioElement {
     if (!window.__pf_audio) {
-        // No crossOrigin — catbox.moe has no CORS headers, setting it would block the load entirely
         const a = new Audio(); a.src = AUDIO_URL; a.loop = true; a.volume = 0
         window.__pf_audio = a
     }
@@ -147,27 +103,18 @@ function ensureAnalyser(): AnalyserNode | null {
         window.__pf_stutter = undefined; window.__pf_connected = undefined
     }
     if (window.__pf_connected) return window.__pf_analyser ?? null
-
     const audio = getAudio()
     try {
         const ctx = new AudioContext(); window.__pf_ctx = ctx
         const analyser = ctx.createAnalyser(); analyser.fftSize = 256; analyser.smoothingTimeConstant = 0.55
         const filter = ctx.createBiquadFilter(); filter.type = "lowpass"; filter.frequency.value = 18000; filter.Q.value = 1.2
         const stutter = ctx.createGain(); stutter.gain.value = 1
-
         window.__pf_analyser = analyser; window.__pf_filter = filter; window.__pf_stutter = stutter
-
-        // createMediaElementSource requires CORS headers; throws SecurityError without them
         const src = ctx.createMediaElementSource(audio)
-        src.connect(analyser)
-        analyser.connect(filter)
-        filter.connect(stutter)
-        stutter.connect(ctx.destination)
-
+        src.connect(analyser); analyser.connect(filter); filter.connect(stutter); stutter.connect(ctx.destination)
         window.__pf_connected = true; window.__pf_chain_version = AUDIO_CHAIN_VERSION
         return analyser
     } catch {
-        // No CORS headers — effects unavailable, audio still plays directly
         try { window.__pf_ctx?.close() } catch {}
         window.__pf_ctx = undefined; window.__pf_analyser = undefined
         window.__pf_connected = true; window.__pf_chain_version = AUDIO_CHAIN_VERSION
@@ -185,7 +132,6 @@ async function startPlayback(): Promise<{ analyser: AnalyserNode | null } | null
 }
 function stopPlayback() { const audio = getAudio(); audio.pause(); audio.volume = 0 }
 
-// ─── Logo icons ────────────────────────────────────────────────────────────────
 function MsftIcon({ color }: { color: string }) {
     return (
         <svg width="13" height="13" viewBox="0 0 13 13" style={{ display: "inline-block", verticalAlign: "text-bottom", marginRight: "3px", opacity: 0.7 }}>
@@ -213,52 +159,26 @@ function HpIcon({ color }: { color: string }) {
 function LogoLine({ accentColor }: { accentColor: string }) {
     const ic = "rgba(245,245,245,0.55)"
     return (
-        <span>
-            {"I have designed for "}
-            <MsftIcon color={ic} />{"Microsoft, "}
-            <AmazonIcon color={ic} />{"Amazon, "}
-            <HpIcon color={ic} />{"HP and more."}
-        </span>
+        <span>{"I have designed for "}<MsftIcon color={ic} />{"Microsoft, "}<AmazonIcon color={ic} />{"Amazon, "}<HpIcon color={ic} />{"HP and more."}</span>
     )
 }
 
-// ─── Project listing ───────────────────────────────────────────────────────────
 function ProjectRow({ project, accentColor, delay }: { project: typeof PROJECTS[0]; accentColor: string; delay: number }) {
     const [visible, setVisible] = useState(false)
     const [hovered, setHovered] = useState(false)
-
-    useEffect(() => {
-        const t = setTimeout(() => setVisible(true), delay)
-        return () => clearTimeout(t)
-    }, [delay])
-
+    useEffect(() => { const t = setTimeout(() => setVisible(true), delay); return () => clearTimeout(t) }, [delay])
     return (
-        <a href={project.link}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-            style={{
-                display: "block", textDecoration: "none", cursor: "pointer",
-                padding: "10px 0", borderBottom: "1px solid rgba(245,245,245,0.05)",
-                opacity: visible ? 1 : 0,
-                transform: visible ? "translateY(0)" : "translateY(6px)",
-                transition: "opacity 0.35s ease, transform 0.35s ease",
-            }}>
+        <a href={project.link} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+            style={{ display: "block", textDecoration: "none", cursor: "pointer", padding: "10px 0", borderBottom: "1px solid rgba(245,245,245,0.05)", opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(6px)", transition: "opacity 0.35s ease, transform 0.35s ease" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-                <span style={{ color: accentColor, opacity: 0.4, fontSize: "13px", width: "22px", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
-                    {project.index}
-                </span>
+                <span style={{ color: accentColor, opacity: 0.4, fontSize: "13px", width: "22px", flexShrink: 0 }}>{project.index}</span>
                 <span style={{ flex: 1, fontSize: "13px", color: hovered ? "rgba(245,245,245,0.95)" : "rgba(245,245,245,0.85)", transition: "color 0.12s" }}>
-                    {project.company}
-                    <span style={{ color: "rgba(245,245,245,0.3)", fontWeight: 400 }}> — {project.title}</span>
+                    {project.company}<span style={{ color: "rgba(245,245,245,0.3)" }}> — {project.title}</span>
                 </span>
                 <span style={{ fontSize: "13px", color: hovered ? accentColor : "rgba(245,245,245,0.18)", transition: "color 0.12s", flexShrink: 0 }}>↗</span>
             </div>
             <div style={{ paddingLeft: "32px", marginTop: "4px" }}>
-                {project.tags.map((tag, i) => (
-                    <span key={i} style={{ color: "rgba(245,245,245,0.22)", fontSize: "13px", marginRight: "10px" }}>
-                        [{tag}]
-                    </span>
-                ))}
+                {project.tags.map((tag, i) => <span key={i} style={{ color: "rgba(245,245,245,0.22)", fontSize: "13px", marginRight: "10px" }}>[{tag}]</span>)}
             </div>
         </a>
     )
@@ -267,50 +187,28 @@ function ProjectRow({ project, accentColor, delay }: { project: typeof PROJECTS[
 function ProjectListing({ visible, accentColor }: { visible: boolean; accentColor: string }) {
     return (
         <div style={{ marginTop: "28px", opacity: visible ? 1 : 0, transition: "opacity 0.3s ease" }}>
-            <div style={{ color: "rgba(245,245,245,0.25)", fontSize: "13px", marginBottom: "12px", letterSpacing: "0.01em" }}>
-                <span style={{ color: accentColor, opacity: 0.4 }}>{">"}</span>
-                {" ls ./work"}
+            <div style={{ color: "rgba(245,245,245,0.25)", fontSize: "13px", marginBottom: "12px" }}>
+                <span style={{ color: accentColor, opacity: 0.4 }}>{">"}</span>{" ls ./work"}
             </div>
             <div style={{ borderTop: "1px solid rgba(245,245,245,0.05)" }}>
-                {PROJECTS.map((p, i) => (
-                    <ProjectRow key={i} project={p} accentColor={accentColor} delay={i * 120} />
-                ))}
+                {PROJECTS.map((p, i) => <ProjectRow key={i} project={p} accentColor={accentColor} delay={i * 120} />)}
             </div>
         </div>
     )
 }
 
-// ─── Cursor ────────────────────────────────────────────────────────────────────
 function Cursor({ visible }: { visible: boolean }) {
-    return (
-        <span style={{
-            display: "inline-block", width: "8px", height: "1em",
-            backgroundColor: "rgba(245,245,245,0.85)", verticalAlign: "text-bottom",
-            marginLeft: "2px", opacity: visible ? 1 : 0, transition: "opacity 0.05s",
-        }} />
-    )
+    return <span style={{ display: "inline-block", width: "8px", height: "1em", backgroundColor: "rgba(245,245,245,0.85)", verticalAlign: "text-bottom", marginLeft: "2px", opacity: visible ? 1 : 0, transition: "opacity 0.05s" }} />
 }
 
-// ─── Music toggle ──────────────────────────────────────────────────────────────
 function MusicToggle({ playing, onToggle, accentColor }: { playing: boolean; onToggle: () => void; accentColor: string }) {
     return (
-        <button onClick={onToggle} title={playing ? "Pause music" : "Play music"} style={{
-            position: "fixed", bottom: "28px", right: "32px", background: "none",
-            border: "1px solid rgba(245,245,245,0.15)", borderRadius: "4px",
-            padding: "8px 14px", cursor: "pointer", display: "flex",
-            alignItems: "flex-end", gap: "3px", height: "38px",
-            opacity: 0.7, transition: "opacity 0.2s, border-color 0.2s", zIndex: 20,
-        }}
+        <button onClick={onToggle} title={playing ? "Pause music" : "Play music"} style={{ position: "fixed", bottom: "28px", right: "32px", background: "none", border: "1px solid rgba(245,245,245,0.15)", borderRadius: "4px", padding: "8px 14px", cursor: "pointer", display: "flex", alignItems: "flex-end", gap: "3px", height: "38px", opacity: 0.7, transition: "opacity 0.2s, border-color 0.2s", zIndex: 20 }}
             onMouseEnter={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.borderColor = "rgba(245,245,245,0.4)" }}
             onMouseLeave={e => { e.currentTarget.style.opacity = "0.7"; e.currentTarget.style.borderColor = "rgba(245,245,245,0.15)" }}
         >
             {[0.4, 1, 0.6, 0.85, 0.5].map((h, i) => (
-                <span key={i} style={{
-                    display: "block", width: "3px", borderRadius: "1px",
-                    backgroundColor: playing ? accentColor : "rgba(245,245,245,0.4)",
-                    height: playing ? `${h * 18}px` : "5px",
-                    transition: "height 0.4s ease, background-color 0.3s",
-                }} />
+                <span key={i} style={{ display: "block", width: "3px", borderRadius: "1px", backgroundColor: playing ? accentColor : "rgba(245,245,245,0.4)", height: playing ? `${h * 18}px` : "5px", transition: "height 0.4s ease, background-color 0.3s" }} />
             ))}
         </button>
     )
@@ -318,27 +216,14 @@ function MusicToggle({ playing, onToggle, accentColor }: { playing: boolean; onT
 
 // ─── Biosphere tuning ──────────────────────────────────────────────────────────
 const BIO = {
-    INIT_COUNT:        100,
-    CLUSTER_COUNT:     6,
-    MAX_ALIVE:         220,
-    REPLENISH_MIN:     40,
-    REPLENISH_BATCH:   6,
-    CELL_SPEED:        0.7,
-    CELL_LIFE_MIN:     700,
-    CELL_LIFE_MAX:     1800,
-    BOUNDARY_X:        0.47,
-    BOUNDARY_Y:        0.47,
-    BOUNDARY_FORCE:    0.055,
-    FRICTION:          0.991,
-    BASS_THRESHOLD:    0.035,  // low threshold — reacts to subtle beats
-    SPAWN_COUNT_BASE:  3,
-    SPAWN_COUNT_BASS:  10,     // big bursts on hits
-    SPAWN_DIST_MIN:    30,
-    SPAWN_DIST_MAX:    200,
-    SPAWN_COOLDOWN:    14,
-    CONNECT_DIST:      110,
-    CONNECT_ENERGY:    200,    // connections stretch dramatically with audio energy
-    MOUSE_FIELD_STR:   0.006,
+    INIT_COUNT: 100, CLUSTER_COUNT: 6, MAX_ALIVE: 220,
+    REPLENISH_MIN: 40, REPLENISH_BATCH: 6,
+    CELL_SPEED: 0.7, CELL_LIFE_MIN: 700, CELL_LIFE_MAX: 1800,
+    BOUNDARY_X: 0.47, BOUNDARY_Y: 0.47, BOUNDARY_FORCE: 0.055,
+    FRICTION: 0.991, BASS_THRESHOLD: 0.035,
+    SPAWN_COUNT_BASE: 3, SPAWN_COUNT_BASS: 10,
+    SPAWN_DIST_MIN: 30, SPAWN_DIST_MAX: 200, SPAWN_COOLDOWN: 14,
+    CONNECT_DIST: 110, CONNECT_ENERGY: 200, MOUSE_FIELD_STR: 0.006,
 }
 
 // ─── Audio Biosphere ───────────────────────────────────────────────────────────
@@ -362,12 +247,20 @@ function makeCell(x: number, y: number, type: CellType = "cell"): Cell {
     }
 }
 
-function AudioBiosphere({ analyser, active }: { analyser: AnalyserNode | null; active: boolean }) {
-    const canvasRef = useRef<HTMLCanvasElement>(null)
+function AudioBiosphere({ analyser, active, canvasRefOut }: {
+    analyser: AnalyserNode | null
+    active: boolean
+    canvasRefOut?: React.MutableRefObject<HTMLCanvasElement | null>
+}) {
+    const canvasRef = useRef<HTMLCanvasElement | null>(null)
     const rafRef = useRef<number>(0)
     const mouseRef = useRef({ x: -9999, y: -9999, inside: false })
-    // smoothed bass for pulse glow
     const bassSmooth = useRef(0)
+
+    const assignCanvas = (el: HTMLCanvasElement | null) => {
+        canvasRef.current = el
+        if (canvasRefOut) canvasRefOut.current = el
+    }
 
     useEffect(() => {
         const canvas = canvasRef.current; if (!canvas) return
@@ -412,20 +305,17 @@ function AudioBiosphere({ analyser, active }: { analyser: AnalyserNode | null; a
                 for (let i = 0; i < n; i++) totalE += bins[i]; totalE /= n * 255
             }
 
-            // Fast-attack, slow-release bass envelope for punchy pulse
             bassSmooth.current = bass > bassSmooth.current
                 ? bassSmooth.current + (bass - bassSmooth.current) * 0.7
                 : bassSmooth.current * 0.88
             const pulse = bassSmooth.current
 
-            // Trail alpha: thinner trail during bass hits = longer ghost streaks
             const trailAlpha = 0.18 - pulse * 0.1
             ctx.fillStyle = `rgba(10,10,10,${trailAlpha})`; ctx.fillRect(0, 0, W, H)
 
             const mx = mouseRef.current.x, my = mouseRef.current.y, mInside = mouseRef.current.inside
             const nmx = mx < 0 ? 0.5 : Math.max(0, Math.min(1, mx / W))
             const nmy = my < 0 ? 0.5 : Math.max(0, Math.min(1, my / H))
-            // Hue sweeps with mouse X, lightness with mouse Y; bass brightens everything
             const hue = Math.round(nmx * 240 + 80)
             const lum = Math.round(48 - nmy * 14 + pulse * 18)
             const sat = Math.round(65 + pulse * 20)
@@ -437,7 +327,6 @@ function AudioBiosphere({ analyser, active }: { analyser: AnalyserNode | null; a
             const ATTRACT_R = 200, ACTIVATE_R = 100, PULL_STR = 0.032
             spawnCd -= dt
 
-            // Burst-spawn on bass transients
             const alive = cells.filter(c => c.type !== "decay")
             if (bass > BIO.BASS_THRESHOLD && spawnCd <= 0 && alive.length < maxAlive) {
                 const count = BIO.SPAWN_COUNT_BASE + Math.floor(bass * BIO.SPAWN_COUNT_BASS)
@@ -455,7 +344,6 @@ function AudioBiosphere({ analyser, active }: { analyser: AnalyserNode | null; a
                 spawnCd = BIO.SPAWN_COOLDOWN + (1 - bass) * 30
             }
 
-            // Connections — reach and brightness scale with energy and pulse
             const connD = BIO.CONNECT_DIST + totalE * BIO.CONNECT_ENERGY
             const connWidth = 0.5 + pulse * 1.8
             for (let i = 0; i < cells.length - 1; i++) {
@@ -465,9 +353,9 @@ function AudioBiosphere({ analyser, active }: { analyser: AnalyserNode | null; a
                     const dx = b.x - a.x, dy = b.y - a.y, dist = Math.sqrt(dx * dx + dy * dy)
                     if (dist < connD) {
                         const t = 1 - dist / connD
-                        const alpha = t * t * (0.5 + pulse * 0.5) * Math.min(a.life, b.life)
                         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y)
-                        ctx.strokeStyle = clrConn(alpha); ctx.lineWidth = connWidth; ctx.stroke()
+                        ctx.strokeStyle = clrConn(t * t * (0.5 + pulse * 0.5) * Math.min(a.life, b.life))
+                        ctx.lineWidth = connWidth; ctx.stroke()
                     }
                 }
             }
@@ -478,7 +366,6 @@ function AudioBiosphere({ analyser, active }: { analyser: AnalyserNode | null; a
                     c.x += c.vx * (dt / 16); c.y += c.vy * (dt / 16)
                     c.vx *= BIO.FRICTION; c.vy *= BIO.FRICTION
 
-                    // Elliptical boundary nudge
                     const cx = W / 2, cy = H / 2
                     const bx = W * BIO.BOUNDARY_X, by = H * BIO.BOUNDARY_Y
                     const nx2 = (c.x - cx) / bx, ny2 = (c.y - cy) / by
@@ -490,7 +377,6 @@ function AudioBiosphere({ analyser, active }: { analyser: AnalyserNode | null; a
                         c.vy += (cy - c.y) / cdist * pull * (dt / 16)
                     }
 
-                    // Mouse: global field drift + close-range pull
                     if (mInside) {
                         const ddx = mx - c.x, ddy = my - c.y, dd = Math.sqrt(ddx * ddx + ddy * ddy)
                         if (dd > 1) { c.vx += (ddx / dd) * BIO.MOUSE_FIELD_STR * (dt / 16); c.vy += (ddy / dd) * BIO.MOUSE_FIELD_STR * (dt / 16) }
@@ -499,12 +385,8 @@ function AudioBiosphere({ analyser, active }: { analyser: AnalyserNode | null; a
                         if (dd < ATTRACT_R) c.energy = Math.min(1, c.energy + (1 - dd / ATTRACT_R) * 0.5 * (dt / 16) * 0.06)
                     }
 
-                    // Energy: mids + bass pulse both drive it
-                    const targetE = mids * 1.2 + pulse * 0.8
-                    c.energy += (targetE - c.energy) * 0.22
+                    c.energy += (mids * 1.2 + pulse * 0.8 - c.energy) * 0.22
                     c.energy = Math.min(1, Math.max(0, c.energy))
-
-                    // Cells live longer when music is energetic
                     c.life -= (dt / 16) / c.maxLife * Math.max(0.3, 1 - totalE * 0.7)
 
                     if (c.type === "spore") {
@@ -522,19 +404,15 @@ function AudioBiosphere({ analyser, active }: { analyser: AnalyserNode | null; a
 
                 const a = c.type === "decay" ? c.decayAlpha : Math.max(0, c.life)
                 if (c.type === "spore") {
-                    // Ring expands outward, shrinking to a bright core
                     ctx.beginPath(); ctx.arc(c.x, c.y, Math.max(1, c.sporeRadius), 0, Math.PI * 2)
                     ctx.strokeStyle = clrMain(a * (0.8 + pulse * 0.4)); ctx.lineWidth = 1.4; ctx.stroke()
                     ctx.beginPath(); ctx.arc(c.x, c.y, 2.2, 0, Math.PI * 2)
                     ctx.fillStyle = clrGlow(a); ctx.fill()
                 } else if (c.type === "active") {
-                    // Large glow that pulses with bass
                     const glowR = 14 + pulse * 12
                     const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, glowR)
-                    g.addColorStop(0, clrGlow(a * (0.4 + pulse * 0.5 + c.energy * 0.2)))
-                    g.addColorStop(1, "rgba(0,0,0,0)")
+                    g.addColorStop(0, clrGlow(a * (0.4 + pulse * 0.5 + c.energy * 0.2))); g.addColorStop(1, "rgba(0,0,0,0)")
                     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c.x, c.y, glowR, 0, Math.PI * 2); ctx.fill()
-                    // Solid bright core
                     ctx.beginPath(); ctx.arc(c.x, c.y, 2.5 + pulse * 1.5, 0, Math.PI * 2)
                     ctx.fillStyle = clrMain(a); ctx.fill()
                 } else if (c.type === "cell") {
@@ -547,7 +425,6 @@ function AudioBiosphere({ analyser, active }: { analyser: AnalyserNode | null; a
                 }
             }
 
-            // Replenish population
             if (cells.filter(c => c.type !== "decay").length < BIO.REPLENISH_MIN) {
                 const alivePop = cells.filter(c => c.type !== "decay")
                 for (let i = 0; i < BIO.REPLENISH_BATCH; i++) {
@@ -570,10 +447,9 @@ function AudioBiosphere({ analyser, active }: { analyser: AnalyserNode | null; a
         }
     }, [analyser])
 
-    return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, width: "100%", height: "100%", opacity: active ? 1 : 0.1, transition: "opacity 2.5s ease", pointerEvents: "none", zIndex: 0 }} />
+    return <canvas ref={assignCanvas} style={{ position: "fixed", inset: 0, width: "100%", height: "100%", opacity: active ? 1 : 0.1, transition: "opacity 2.5s ease", pointerEvents: "none", zIndex: 0 }} />
 }
 
-// ─── Legend ────────────────────────────────────────────────────────────────────
 function Legend() {
     return (
         <div style={{ position: "fixed", bottom: "28px", left: "32px", zIndex: 20, fontFamily: "'SF Mono','Courier New',monospace", fontSize: "13px", lineHeight: "1.8", color: "rgba(0,175,70,0.4)", pointerEvents: "none" }}>
@@ -584,19 +460,71 @@ function Legend() {
     )
 }
 
-// ─── Audio hint ────────────────────────────────────────────────────────────────
 function AudioHint({ playing }: { playing: boolean }) {
     return (
-        <div style={{
-            position: "fixed", bottom: "78px", right: "32px", zIndex: 20,
-            fontFamily: "'SF Mono','Courier New',monospace", fontSize: "11px", lineHeight: "1.75",
-            color: "rgba(245,245,245,0.22)", pointerEvents: "none", textAlign: "right",
-            opacity: playing ? 1 : 0, transition: "opacity 1.2s ease",
-            maxWidth: "340px",
-        }}>
+        <div style={{ position: "fixed", bottom: "78px", right: "32px", zIndex: 20, fontFamily: "'SF Mono','Courier New',monospace", fontSize: "11px", lineHeight: "1.75", color: "rgba(245,245,245,0.22)", pointerEvents: "none", textAlign: "right", opacity: playing ? 1 : 0, transition: "opacity 1.2s ease", maxWidth: "340px" }}>
             <div style={{ marginBottom: "4px", opacity: 0.5, letterSpacing: "0.12em", textTransform: "uppercase", fontSize: "10px" }}>mouse → audio</div>
             <div>Y — lowpass filter · top = open (18kHz) · bottom = closed (100Hz)</div>
             <div>X — 16th-note stutter · left = off · right = 65% chop @ 128 BPM</div>
+        </div>
+    )
+}
+
+// ─── Rec Button ────────────────────────────────────────────────────────────────
+function RecButton({ isRecording, time, onStart, onStop }: { isRecording: boolean; time: number; onStart: () => void; onStop: () => void }) {
+    const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
+    return (
+        <button
+            onClick={isRecording ? onStop : onStart}
+            style={{
+                position: "fixed", top: "28px", left: "32px", zIndex: 30,
+                display: "flex", alignItems: "center", gap: "8px",
+                background: "none", border: "1px solid rgba(245,245,245,0.15)", borderRadius: "4px",
+                padding: "7px 14px", cursor: "pointer",
+                fontFamily: "'SF Mono','Courier New',monospace", fontSize: "11px",
+                letterSpacing: "0.14em",
+                color: isRecording ? "rgba(245,245,245,0.85)" : "rgba(245,245,245,0.45)",
+                transition: "border-color 0.2s, color 0.2s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(245,245,245,0.35)"; e.currentTarget.style.color = "rgba(245,245,245,0.9)" }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(245,245,245,0.15)"; e.currentTarget.style.color = isRecording ? "rgba(245,245,245,0.85)" : "rgba(245,245,245,0.45)" }}
+        >
+            <span style={{
+                display: "inline-block", width: "7px", height: "7px", borderRadius: "50%",
+                backgroundColor: "#ff3b30", flexShrink: 0,
+                animation: isRecording ? "recBlink 1s ease-in-out infinite" : "recPulse 1.6s ease-in-out infinite",
+            }} />
+            {isRecording ? `${fmt(time)}  ■ stop` : "rec"}
+        </button>
+    )
+}
+
+// ─── Download Modal ────────────────────────────────────────────────────────────
+function DownloadModal({ url, duration, onClose, accentColor }: { url: string; duration: number; onClose: () => void; accentColor: string }) {
+    const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
+    const ts = new Date()
+    const filename = `biosphere-${ts.getFullYear()}${String(ts.getMonth() + 1).padStart(2, "0")}${String(ts.getDate()).padStart(2, "0")}-${String(ts.getHours()).padStart(2, "0")}${String(ts.getMinutes()).padStart(2, "0")}.webm`
+    return (
+        <div
+            style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.72)", backdropFilter: "blur(14px)", fontFamily: "'SF Mono','Courier New',monospace" }}
+            onClick={e => { if (e.target === e.currentTarget) onClose() }}
+        >
+            <div style={{ background: "rgb(12,12,12)", border: "1px solid rgba(245,245,245,0.12)", padding: "52px 48px", minWidth: "300px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <div style={{ color: accentColor, opacity: 0.45, fontSize: "10px", letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: "10px" }}>your biosphere</div>
+                <div style={{ color: "rgba(245,245,245,0.28)", fontSize: "12px", letterSpacing: "0.06em", marginBottom: "40px" }}>recorded · {fmt(duration)}</div>
+                <a
+                    href={url} download={filename}
+                    style={{ display: "block", width: "100%", boxSizing: "border-box", border: "1px solid rgba(245,245,245,0.22)", color: "rgba(245,245,245,0.8)", padding: "11px 28px", textDecoration: "none", fontSize: "12px", letterSpacing: "0.1em", marginBottom: "20px", transition: "border-color 0.15s, color 0.15s" }}
+                    onMouseEnter={e => { const a = e.currentTarget; a.style.borderColor = accentColor; a.style.color = accentColor }}
+                    onMouseLeave={e => { const a = e.currentTarget; a.style.borderColor = "rgba(245,245,245,0.22)"; a.style.color = "rgba(245,245,245,0.8)" }}
+                >↓  download .webm</a>
+                <button
+                    onClick={onClose}
+                    style={{ background: "none", border: "none", color: "rgba(245,245,245,0.22)", fontSize: "11px", letterSpacing: "0.1em", cursor: "pointer", transition: "color 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.color = "rgba(245,245,245,0.6)" }}
+                    onMouseLeave={e => { e.currentTarget.style.color = "rgba(245,245,245,0.22)" }}
+                >× close</button>
+            </div>
         </div>
     )
 }
@@ -679,6 +607,13 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
     const [panelVisible, setPanelVisible] = useState(false)
     const [projectsVisible, setProjectsVisible] = useState(false)
 
+    // ── Recording state ──
+    const [isRecording, setIsRecording] = useState(false)
+    const [recordingTime, setRecordingTime] = useState(0)
+    const [showModal, setShowModal] = useState(false)
+    const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
+    const [recordedDuration, setRecordedDuration] = useState(0)
+
     const charIndex = useRef(0)
     const audioVals = useRef({ bass: 0, energy: 0 })
     const terminalRef = useRef<HTMLDivElement>(null)
@@ -687,35 +622,116 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
     const glitchCooldown = useRef(0)
     const mouseAudioRef = useRef({ x: 0.5, y: 0.5 })
     const stutterGateRef = useRef(true)
+
+    // ── Recording refs ──
+    const biosphereCanvasRef = useRef<HTMLCanvasElement | null>(null)
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+    const chunksRef = useRef<Blob[]>([])
+    const recTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+    const recRafRef = useRef<number>(0)
+    const audioDstRef = useRef<MediaStreamAudioDestinationNode | null>(null)
+    const recordingTimeRef = useRef(0)
+
     const phase = PHASES[phaseIndex]
 
     useEffect(() => { if (!isCanvas) return; stopPlayback() }, [])
     useEffect(() => { if (phaseIndex >= 1) { const t = setTimeout(() => setPanelVisible(true), 400); return () => clearTimeout(t) } }, [phaseIndex])
-
     useEffect(() => {
         if (phaseIndex === 1 && !isTyping) {
             const t = setTimeout(() => { setHistory(h => [...h, { text: PHASES[1].text }]); setPhaseIndex(2) }, 1400)
             return () => clearTimeout(t)
         }
     }, [phaseIndex, isTyping])
-
     useEffect(() => {
-        if (phaseIndex === 2 && !isTyping) {
-            const t = setTimeout(() => setProjectsVisible(true), 1200)
-            return () => clearTimeout(t)
-        }
+        if (phaseIndex === 2 && !isTyping) { const t = setTimeout(() => setProjectsVisible(true), 1200); return () => clearTimeout(t) }
     }, [phaseIndex, isTyping])
-
     useEffect(() => {
-        const onMove = (e: MouseEvent) => {
-            mouseAudioRef.current.x = e.clientX / window.innerWidth
-            mouseAudioRef.current.y = e.clientY / window.innerHeight
-        }
-        window.addEventListener("mousemove", onMove, { passive: true })
-        return () => window.removeEventListener("mousemove", onMove)
+        const onMove = (e: MouseEvent) => { mouseAudioRef.current.x = e.clientX / window.innerWidth; mouseAudioRef.current.y = e.clientY / window.innerHeight }
+        window.addEventListener("mousemove", onMove, { passive: true }); return () => window.removeEventListener("mousemove", onMove)
     }, [])
 
-    // Audio effect loop: Y = filter cutoff, X = 16th-note gate depth
+    useEffect(() => {
+        return () => {
+            if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop()
+            cancelAnimationFrame(recRafRef.current)
+            if (recTimerRef.current) clearInterval(recTimerRef.current)
+        }
+    }, [])
+
+    const startRecording = () => {
+        const biosphereCanvas = biosphereCanvasRef.current
+        if (!biosphereCanvas) return
+
+        const recCanvas = document.createElement("canvas")
+        recCanvas.width = 800; recCanvas.height = 800
+        const recCtx = recCanvas.getContext("2d")!
+
+        const composite = () => {
+            const bW = biosphereCanvas.width, bH = biosphereCanvas.height
+            const side = Math.min(bW, bH)
+            const sx = (bW - side) / 2, sy = (bH - side) / 2
+            recCtx.drawImage(biosphereCanvas, sx, sy, side, side, 0, 0, 800, 800)
+            recRafRef.current = requestAnimationFrame(composite)
+        }
+        recRafRef.current = requestAnimationFrame(composite)
+
+        const videoStream = recCanvas.captureStream(30)
+
+        let combinedStream: MediaStream
+        const pCtx = window.__pf_ctx
+        const stutterNode = window.__pf_stutter
+        if (pCtx && stutterNode) {
+            const dst = pCtx.createMediaStreamDestination()
+            stutterNode.connect(dst)
+            audioDstRef.current = dst
+            combinedStream = new MediaStream([
+                ...videoStream.getVideoTracks(),
+                ...dst.stream.getAudioTracks(),
+            ])
+        } else {
+            combinedStream = videoStream
+        }
+
+        chunksRef.current = []
+        const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+            ? "video/webm;codecs=vp9,opus"
+            : "video/webm"
+
+        const recorder = new MediaRecorder(combinedStream, { mimeType })
+        recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+        recorder.onstop = () => {
+            cancelAnimationFrame(recRafRef.current)
+            const dst = audioDstRef.current
+            if (window.__pf_stutter && dst) { try { window.__pf_stutter.disconnect(dst) } catch {} }
+            audioDstRef.current = null
+            const blob = new Blob(chunksRef.current, { type: mimeType })
+            const url = URL.createObjectURL(blob)
+            setDownloadUrl(url)
+            setShowModal(true)
+        }
+
+        mediaRecorderRef.current = recorder
+        recorder.start(250)
+        recordingTimeRef.current = 0
+        setIsRecording(true)
+        setRecordingTime(0)
+        recTimerRef.current = setInterval(() => {
+            recordingTimeRef.current++
+            setRecordingTime(recordingTimeRef.current)
+        }, 1000)
+
+        setTimeout(() => {
+            if (mediaRecorderRef.current?.state === "recording") stopRecording()
+        }, 60000)
+    }
+
+    const stopRecording = () => {
+        if (recTimerRef.current) { clearInterval(recTimerRef.current); recTimerRef.current = null }
+        setRecordedDuration(recordingTimeRef.current)
+        setIsRecording(false)
+        mediaRecorderRef.current?.stop()
+    }
+
     useEffect(() => {
         if (!analyser) return
         let raf = 0
@@ -730,7 +746,6 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
             audioVals.current.energy += (totalRaw - audioVals.current.energy) * 0.1
             const { bass, energy } = audioVals.current
 
-            // Screen shake on transients
             const sk = shakeRef.current
             const transient = bass - sk.prevBass; sk.prevBass = bass
             if (transient > 0.08 && sk.decay <= 0) { sk.x = (Math.random() - 0.5) * bass * 5; sk.y = (Math.random() - 0.5) * bass * 3; sk.decay = 10 }
@@ -740,7 +755,6 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
             const vg = vignetteRef.current
             if (vg) { const sz = 48 + energy * 8; vg.style.background = `radial-gradient(ellipse ${sz}% ${sz + 5}% at 50% 50%, rgba(10,10,10,0.92) 0%, rgba(10,10,10,0.45) 60%, transparent 100%)` }
 
-            // Glitch on hard bass
             glitchCooldown.current -= 16
             if (bass > 0.4 && glitchCooldown.current <= 0 && Math.random() < bass * 0.4) {
                 glitchCooldown.current = 300 + Math.random() * 400; setGlitchedText("TRIGGER")
@@ -749,11 +763,7 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
             const pCtx = window.__pf_ctx; if (!pCtx) return
             const filter = window.__pf_filter; const stutter = window.__pf_stutter
             const mx = mouseAudioRef.current.x, my = mouseAudioRef.current.y, now = pCtx.currentTime
-
-            // Y axis → filter cutoff (top = open, bottom = closed)
             if (filter) filter.frequency.setTargetAtTime(80 * Math.pow(220, 1 - my), now, 0.06)
-
-            // X axis → 16th-note gate depth (left = no stutter, right = full chop)
             if (stutter) {
                 const dead = 0.05
                 if (mx > dead) {
@@ -763,14 +773,12 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
                     const gateOpen = ph < (1 - depth * 0.7)
                     if (gateOpen !== stutterGateRef.current) {
                         stutterGateRef.current = gateOpen
-                        stutter.gain.cancelScheduledValues(now)
-                        stutter.gain.setValueAtTime(stutter.gain.value, now)
+                        stutter.gain.cancelScheduledValues(now); stutter.gain.setValueAtTime(stutter.gain.value, now)
                         stutter.gain.linearRampToValueAtTime(gateOpen ? 1 : Math.max(0, 1 - depth), now + 0.004)
                     }
                 } else if (!stutterGateRef.current) {
                     stutterGateRef.current = true
-                    stutter.gain.cancelScheduledValues(now)
-                    stutter.gain.setValueAtTime(stutter.gain.value, now)
+                    stutter.gain.cancelScheduledValues(now); stutter.gain.setValueAtTime(stutter.gain.value, now)
                     stutter.gain.linearRampToValueAtTime(1, now + 0.025)
                 }
             }
@@ -825,7 +833,6 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
         if (!audio.paused) { if (!analyser) setAnalyser(getAnalyser()); return }
         startPlayback().then(result => { if (result) { setAnalyser(result.analyser); setMusicPlaying(true) } })
     }
-
     const handleY = () => {
         if (isTyping || phaseIndex >= PHASES.length - 1) return
         ensureAudioStarted(); setHistory(h => [...h, { text: phase.text }, { text: "> Y", dim: true }]); setPhaseIndex(1)
@@ -842,7 +849,12 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
 
     return (
         <div style={{ width: "100%", minHeight: "100vh", backgroundColor: "rgb(10,10,10)", display: "flex", alignItems: "center", justifyContent: "center", padding: "64px 24px", boxSizing: "border-box", fontFamily: "'SF Mono','Fira Code','JetBrains Mono','Courier New',monospace", position: "relative" }}>
-            <AudioBiosphere analyser={analyser} active={musicPlaying} />
+            <style>{`
+                @keyframes recPulse { 0%,100%{opacity:1} 50%{opacity:0.12} }
+                @keyframes recBlink { 0%,100%{opacity:1} 50%{opacity:0.35} }
+            `}</style>
+
+            <AudioBiosphere analyser={analyser} active={musicPlaying} canvasRefOut={biosphereCanvasRef} />
             <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 3, backgroundImage: "repeating-linear-gradient(0deg, rgba(0,0,0,0.07) 0px, rgba(0,0,0,0.07) 1px, transparent 1px, transparent 4px)" }} />
             <div ref={vignetteRef} style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1, background: "radial-gradient(ellipse 48% 53% at 50% 50%, rgba(10,10,10,0.92) 0%, rgba(10,10,10,0.45) 60%, transparent 100%)" }} />
 
@@ -870,10 +882,7 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
                         <div>
                             {PHASES[phaseIndex].input && <p style={dimLine}>&gt; {PHASES[phaseIndex].input}</p>}
                             <p style={{ ...lineBase, marginBottom: "20px" }}>
-                                {phaseIndex === 2 && !isTyping
-                                    ? <LogoLine accentColor={accentColor} />
-                                    : <>{activeText}{isTyping && <Cursor visible={cursorOn} />}</>
-                                }
+                                {phaseIndex === 2 && !isTyping ? <LogoLine accentColor={accentColor} /> : <>{activeText}{isTyping && <Cursor visible={cursorOn} />}</>}
                             </p>
                             {!isTyping && phaseIndex < 2 && <Cursor visible={cursorOn} />}
                             {phaseIndex === 2 && !projectsVisible && !isTyping && <Cursor visible={cursorOn} />}
@@ -889,6 +898,15 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
             <Legend />
             {!isCanvas && <AudioHint playing={musicPlaying} />}
             {!isCanvas && <MusicToggle playing={musicPlaying} onToggle={handleToggleMusic} accentColor={accentColor} />}
+            {!isCanvas && <RecButton isRecording={isRecording} time={recordingTime} onStart={startRecording} onStop={stopRecording} />}
+            {showModal && downloadUrl && (
+                <DownloadModal
+                    url={downloadUrl}
+                    duration={recordedDuration}
+                    onClose={() => setShowModal(false)}
+                    accentColor={accentColor}
+                />
+            )}
         </div>
     )
 }
