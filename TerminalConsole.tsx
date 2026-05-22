@@ -30,13 +30,6 @@ const RECOGNITION = [
     { title: "Volume Zero Micro Housing — Global Top 10", detail: "International competition · 2019" },
 ]
 
-const PROJECTS = [
-    { index: "01", company: "Amazon Now", title: "Savings — helping customers spend less on every order", tags: ["case-study", "e-commerce", "ux"], link: "/amazonsavings" },
-    { index: "02", company: "Finhaat", title: "Claims UX — helping agents know policyholders better", tags: ["case-study", "fintech"], link: "/cpi" },
-    { index: "03", company: "Microsoft India R&D", title: "Teams Activity Feed — mental-health-centric AI", tags: ["internship", "ai", "wellbeing"], link: "/project-3" },
-    { index: "04", company: "HP", title: "Self-service retail kiosk experience", tags: ["product", "hardware", "retail"], link: "/project-4" },
-]
-
 type PanelLine = {
     text: string; color: string; opacity?: number; letterSpacing?: string
     textTransform?: React.CSSProperties["textTransform"]; marginBottom?: number
@@ -76,59 +69,44 @@ function buildLines(accentColor: string): PanelLine[] {
     return lines
 }
 
-const AUDIO_CHAIN_VERSION = 6
 declare global {
     interface Window {
         __pf_audio?: HTMLAudioElement; __pf_ctx?: AudioContext
         __pf_analyser?: AnalyserNode; __pf_filter?: BiquadFilterNode
         __pf_stutter?: GainNode; __pf_connected?: boolean
-        __pf_chain_version?: number
     }
 }
 
 function getAudio(): HTMLAudioElement {
     if (!window.__pf_audio) {
-        const a = new Audio(); a.src = AUDIO_URL; a.loop = true; a.volume = 0
+        const a = new Audio(); a.crossOrigin = "anonymous"; a.src = AUDIO_URL; a.loop = true; a.volume = 0
         window.__pf_audio = a
     }
     return window.__pf_audio
 }
 function getAnalyser(): AnalyserNode | null { return window.__pf_analyser ?? null }
 
-function ensureAnalyser(): AnalyserNode | null {
-    if (window.__pf_chain_version !== AUDIO_CHAIN_VERSION) {
-        try { window.__pf_ctx?.close() } catch {}
-        window.__pf_audio = undefined; window.__pf_ctx = undefined
-        window.__pf_analyser = undefined; window.__pf_filter = undefined
-        window.__pf_stutter = undefined; window.__pf_connected = undefined
-    }
-    if (window.__pf_connected) return window.__pf_analyser ?? null
+function ensureAnalyser(): AnalyserNode {
+    if (window.__pf_connected && window.__pf_analyser) return window.__pf_analyser
     const audio = getAudio()
-    try {
-        const ctx = new AudioContext(); window.__pf_ctx = ctx
-        const analyser = ctx.createAnalyser(); analyser.fftSize = 256; analyser.smoothingTimeConstant = 0.55
-        const filter = ctx.createBiquadFilter(); filter.type = "lowpass"; filter.frequency.value = 18000; filter.Q.value = 1.2
-        const stutter = ctx.createGain(); stutter.gain.value = 1
-        window.__pf_analyser = analyser; window.__pf_filter = filter; window.__pf_stutter = stutter
-        const src = ctx.createMediaElementSource(audio)
-        src.connect(analyser); analyser.connect(filter); filter.connect(stutter); stutter.connect(ctx.destination)
-        window.__pf_connected = true; window.__pf_chain_version = AUDIO_CHAIN_VERSION
-        return analyser
-    } catch {
-        try { window.__pf_ctx?.close() } catch {}
-        window.__pf_ctx = undefined; window.__pf_analyser = undefined
-        window.__pf_connected = true; window.__pf_chain_version = AUDIO_CHAIN_VERSION
-        return null
-    }
+    const ctx = new AudioContext(); window.__pf_ctx = ctx
+    const analyser = ctx.createAnalyser(); analyser.fftSize = 256; analyser.smoothingTimeConstant = 0.75
+    const filter = ctx.createBiquadFilter(); filter.type = "lowpass"; filter.frequency.value = 18000; filter.Q.value = 0.8
+    window.__pf_filter = filter
+    const stutter = ctx.createGain(); stutter.gain.value = 1; window.__pf_stutter = stutter
+    const src = ctx.createMediaElementSource(audio)
+    src.connect(analyser); analyser.connect(filter); filter.connect(stutter); stutter.connect(ctx.destination)
+    window.__pf_analyser = analyser; window.__pf_connected = true
+    return analyser
 }
 
 function fadeIn(audio: HTMLAudioElement, ms = 3000) {
-    const steps = 60, target = 0.22, delta = target / steps; let cur = 0; audio.volume = 0
+    const steps = 60, target = 0.18, delta = target / steps; let cur = 0; audio.volume = 0
     const t = setInterval(() => { cur = Math.min(target, cur + delta); audio.volume = cur; if (cur >= target) clearInterval(t) }, ms / steps)
 }
-async function startPlayback(): Promise<{ analyser: AnalyserNode | null } | null> {
+async function startPlayback(): Promise<AnalyserNode | null> {
     const audio = getAudio(); const node = ensureAnalyser(); window.__pf_ctx?.resume()
-    try { await audio.play(); fadeIn(audio); return { analyser: node } } catch { return null }
+    try { await audio.play(); fadeIn(audio); return node } catch { return null }
 }
 function stopPlayback() { const audio = getAudio(); audio.pause(); audio.volume = 0 }
 
@@ -163,40 +141,6 @@ function LogoLine({ accentColor }: { accentColor: string }) {
     )
 }
 
-function ProjectRow({ project, accentColor, delay }: { project: typeof PROJECTS[0]; accentColor: string; delay: number }) {
-    const [visible, setVisible] = useState(false)
-    const [hovered, setHovered] = useState(false)
-    useEffect(() => { const t = setTimeout(() => setVisible(true), delay); return () => clearTimeout(t) }, [delay])
-    return (
-        <a href={project.link} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-            style={{ display: "block", textDecoration: "none", cursor: "pointer", padding: "10px 0", borderBottom: "1px solid rgba(245,245,245,0.05)", opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(6px)", transition: "opacity 0.35s ease, transform 0.35s ease" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-                <span style={{ color: accentColor, opacity: 0.4, fontSize: "13px", width: "22px", flexShrink: 0 }}>{project.index}</span>
-                <span style={{ flex: 1, fontSize: "13px", color: hovered ? "rgba(245,245,245,0.95)" : "rgba(245,245,245,0.85)", transition: "color 0.12s" }}>
-                    {project.company}<span style={{ color: "rgba(245,245,245,0.3)" }}> — {project.title}</span>
-                </span>
-                <span style={{ fontSize: "13px", color: hovered ? accentColor : "rgba(245,245,245,0.18)", transition: "color 0.12s", flexShrink: 0 }}>↗</span>
-            </div>
-            <div style={{ paddingLeft: "32px", marginTop: "4px" }}>
-                {project.tags.map((tag, i) => <span key={i} style={{ color: "rgba(245,245,245,0.22)", fontSize: "13px", marginRight: "10px" }}>[{tag}]</span>)}
-            </div>
-        </a>
-    )
-}
-
-function ProjectListing({ visible, accentColor }: { visible: boolean; accentColor: string }) {
-    return (
-        <div style={{ marginTop: "28px", opacity: visible ? 1 : 0, transition: "opacity 0.3s ease" }}>
-            <div style={{ color: "rgba(245,245,245,0.25)", fontSize: "13px", marginBottom: "12px" }}>
-                <span style={{ color: accentColor, opacity: 0.4 }}>{">"}</span>{" ls ./work"}
-            </div>
-            <div style={{ borderTop: "1px solid rgba(245,245,245,0.05)" }}>
-                {PROJECTS.map((p, i) => <ProjectRow key={i} project={p} accentColor={accentColor} delay={i * 120} />)}
-            </div>
-        </div>
-    )
-}
-
 function Cursor({ visible }: { visible: boolean }) {
     return <span style={{ display: "inline-block", width: "8px", height: "1em", backgroundColor: "rgba(245,245,245,0.85)", verticalAlign: "text-bottom", marginLeft: "2px", opacity: visible ? 1 : 0, transition: "opacity 0.05s" }} />
 }
@@ -211,262 +155,6 @@ function MusicToggle({ playing, onToggle, accentColor }: { playing: boolean; onT
                 <span key={i} style={{ display: "block", width: "3px", borderRadius: "1px", backgroundColor: playing ? accentColor : "rgba(245,245,245,0.4)", height: playing ? `${h * 18}px` : "5px", transition: "height 0.4s ease, background-color 0.3s" }} />
             ))}
         </button>
-    )
-}
-
-// ─── Biosphere tuning ──────────────────────────────────────────────────────────
-const BIO = {
-    INIT_COUNT: 100, CLUSTER_COUNT: 6, MAX_ALIVE: 220,
-    REPLENISH_MIN: 40, REPLENISH_BATCH: 6,
-    CELL_SPEED: 0.7, CELL_LIFE_MIN: 700, CELL_LIFE_MAX: 1800,
-    BOUNDARY_X: 0.47, BOUNDARY_Y: 0.47, BOUNDARY_FORCE: 0.055,
-    FRICTION: 0.991, BASS_THRESHOLD: 0.035,
-    SPAWN_COUNT_BASE: 3, SPAWN_COUNT_BASS: 10,
-    SPAWN_DIST_MIN: 30, SPAWN_DIST_MAX: 200, SPAWN_COOLDOWN: 14,
-    CONNECT_DIST: 110, CONNECT_ENERGY: 200, MOUSE_FIELD_STR: 0.006,
-}
-
-// ─── Audio Biosphere ───────────────────────────────────────────────────────────
-type CellType = "cell" | "active" | "spore" | "decay"
-type Cell = {
-    x: number; y: number; vx: number; vy: number
-    life: number; maxLife: number; energy: number
-    type: CellType; sporeRadius: number; decayAlpha: number
-}
-
-function makeCell(x: number, y: number, type: CellType = "cell"): Cell {
-    return {
-        x, y,
-        vx: (Math.random() - 0.5) * BIO.CELL_SPEED,
-        vy: (Math.random() - 0.5) * BIO.CELL_SPEED,
-        life: type === "spore" ? 1 : 0.6 + Math.random() * 0.4,
-        maxLife: BIO.CELL_LIFE_MIN + Math.random() * (BIO.CELL_LIFE_MAX - BIO.CELL_LIFE_MIN),
-        energy: 0, type,
-        sporeRadius: type === "spore" ? 5 + Math.random() * 8 : 0,
-        decayAlpha: 1,
-    }
-}
-
-function AudioBiosphere({ analyser, active, canvasRefOut }: {
-    analyser: AnalyserNode | null
-    active: boolean
-    canvasRefOut?: React.MutableRefObject<HTMLCanvasElement | null>
-}) {
-    const canvasRef = useRef<HTMLCanvasElement | null>(null)
-    const rafRef = useRef<number>(0)
-    const mouseRef = useRef({ x: -9999, y: -9999, inside: false })
-    const bassSmooth = useRef(0)
-
-    const assignCanvas = (el: HTMLCanvasElement | null) => {
-        canvasRef.current = el
-        if (canvasRefOut) canvasRefOut.current = el
-    }
-
-    useEffect(() => {
-        const canvas = canvasRef.current; if (!canvas) return
-        const ctx = canvas.getContext("2d")!
-        let cells: Cell[] = [], W = 0, H = 0, spawnCd = 0, maxAlive = BIO.MAX_ALIVE
-
-        const init = () => {
-            W = canvas.offsetWidth; H = canvas.offsetHeight
-            canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio
-            ctx.scale(devicePixelRatio, devicePixelRatio)
-            const viewScale = Math.sqrt((W * H) / (1080 * 1080))
-            const initCount = Math.round(BIO.INIT_COUNT * viewScale)
-            maxAlive = Math.round(BIO.MAX_ALIVE * viewScale)
-            cells = []
-            const perCluster = Math.floor(initCount / BIO.CLUSTER_COUNT)
-            for (let cl = 0; cl < BIO.CLUSTER_COUNT; cl++) {
-                const ax = W * 0.1 + Math.random() * W * 0.8
-                const ay = H * 0.1 + Math.random() * H * 0.8
-                for (let i = 0; i < perCluster; i++) {
-                    const ang = Math.random() * Math.PI * 2, d = Math.random() * 70
-                    cells.push(makeCell(ax + Math.cos(ang) * d, ay + Math.sin(ang) * d))
-                }
-            }
-        }
-        init()
-
-        const onMove = (e: MouseEvent) => { mouseRef.current.x = e.clientX; mouseRef.current.y = e.clientY; mouseRef.current.inside = true }
-        const onLeave = () => { mouseRef.current.inside = false }
-        window.addEventListener("mousemove", onMove); window.addEventListener("mouseleave", onLeave)
-
-        let lastTime = performance.now()
-        const draw = (now: number) => {
-            rafRef.current = requestAnimationFrame(draw)
-            const dt = Math.min(now - lastTime, 50); lastTime = now
-
-            let bass = 0, mids = 0, totalE = 0
-            if (analyser) {
-                const bins = new Uint8Array(analyser.frequencyBinCount); analyser.getByteFrequencyData(bins)
-                const n = bins.length, be = Math.floor(n * 0.12), me = Math.floor(n * 0.5)
-                for (let i = 0; i < be; i++) bass += bins[i]; bass /= be * 255
-                for (let i = be; i < me; i++) mids += bins[i]; mids /= (me - be) * 255
-                for (let i = 0; i < n; i++) totalE += bins[i]; totalE /= n * 255
-            }
-
-            bassSmooth.current = bass > bassSmooth.current
-                ? bassSmooth.current + (bass - bassSmooth.current) * 0.7
-                : bassSmooth.current * 0.88
-            const pulse = bassSmooth.current
-
-            const trailAlpha = 0.18 - pulse * 0.1
-            ctx.fillStyle = `rgba(10,10,10,${trailAlpha})`; ctx.fillRect(0, 0, W, H)
-
-            const mx = mouseRef.current.x, my = mouseRef.current.y, mInside = mouseRef.current.inside
-            const nmx = mx < 0 ? 0.5 : Math.max(0, Math.min(1, mx / W))
-            const nmy = my < 0 ? 0.5 : Math.max(0, Math.min(1, my / H))
-            const hue = Math.round(nmx * 240 + 80)
-            const lum = Math.round(48 - nmy * 14 + pulse * 18)
-            const sat = Math.round(65 + pulse * 20)
-            const clrConn = (a: number) => `hsla(${hue},${sat}%,${lum}%,${a})`
-            const clrMain = (a: number) => `hsla(${hue},${sat + 10}%,${lum + 18}%,${a})`
-            const clrGlow = (a: number) => `hsla(${hue},${sat}%,${lum + 28}%,${a})`
-            const clrDim  = (a: number) => `hsla(${hue},${sat - 15}%,${lum - 8}%,${a})`
-
-            const ATTRACT_R = 200, ACTIVATE_R = 100, PULL_STR = 0.032
-            spawnCd -= dt
-
-            const alive = cells.filter(c => c.type !== "decay")
-            if (bass > BIO.BASS_THRESHOLD && spawnCd <= 0 && alive.length < maxAlive) {
-                const count = BIO.SPAWN_COUNT_BASE + Math.floor(bass * BIO.SPAWN_COUNT_BASS)
-                for (let i = 0; i < count; i++) {
-                    const p = alive[Math.floor(Math.random() * alive.length)]
-                    const ang = Math.random() * Math.PI * 2
-                    const d = BIO.SPAWN_DIST_MIN + Math.random() * (BIO.SPAWN_DIST_MAX - BIO.SPAWN_DIST_MIN)
-                    const spx = p ? p.x + Math.cos(ang) * d : W / 2 + (Math.random() - 0.5) * W * 0.6
-                    const spy = p ? p.y + Math.sin(ang) * d : H / 2 + (Math.random() - 0.5) * H * 0.6
-                    const s = makeCell(spx, spy, "spore")
-                    const speed = 0.8 + bass * 3.5
-                    s.vx = Math.cos(ang) * speed; s.vy = Math.sin(ang) * speed; s.energy = bass
-                    cells.push(s)
-                }
-                spawnCd = BIO.SPAWN_COOLDOWN + (1 - bass) * 30
-            }
-
-            const connD = BIO.CONNECT_DIST + totalE * BIO.CONNECT_ENERGY
-            const connWidth = 0.5 + pulse * 1.8
-            for (let i = 0; i < cells.length - 1; i++) {
-                const a = cells[i]; if (a.type === "decay") continue
-                for (let j = i + 1; j < cells.length; j++) {
-                    const b = cells[j]; if (b.type === "decay") continue
-                    const dx = b.x - a.x, dy = b.y - a.y, dist = Math.sqrt(dx * dx + dy * dy)
-                    if (dist < connD) {
-                        const t = 1 - dist / connD
-                        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y)
-                        ctx.strokeStyle = clrConn(t * t * (0.5 + pulse * 0.5) * Math.min(a.life, b.life))
-                        ctx.lineWidth = connWidth; ctx.stroke()
-                    }
-                }
-            }
-
-            for (let i = cells.length - 1; i >= 0; i--) {
-                const c = cells[i]
-                if (c.type !== "decay") {
-                    c.x += c.vx * (dt / 16); c.y += c.vy * (dt / 16)
-                    c.vx *= BIO.FRICTION; c.vy *= BIO.FRICTION
-
-                    const cx = W / 2, cy = H / 2
-                    const bx = W * BIO.BOUNDARY_X, by = H * BIO.BOUNDARY_Y
-                    const nx2 = (c.x - cx) / bx, ny2 = (c.y - cy) / by
-                    const norm = Math.sqrt(nx2 * nx2 + ny2 * ny2)
-                    if (norm > 1) {
-                        const cdist = Math.sqrt((c.x - cx) ** 2 + (c.y - cy) ** 2)
-                        const pull = (norm - 1) * BIO.BOUNDARY_FORCE
-                        c.vx += (cx - c.x) / cdist * pull * (dt / 16)
-                        c.vy += (cy - c.y) / cdist * pull * (dt / 16)
-                    }
-
-                    if (mInside) {
-                        const ddx = mx - c.x, ddy = my - c.y, dd = Math.sqrt(ddx * ddx + ddy * ddy)
-                        if (dd > 1) { c.vx += (ddx / dd) * BIO.MOUSE_FIELD_STR * (dt / 16); c.vy += (ddy / dd) * BIO.MOUSE_FIELD_STR * (dt / 16) }
-                        if (dd < ATTRACT_R && dd > 1) { const falloff = (1 - dd / ATTRACT_R) ** 2; c.vx += (ddx / dd) * PULL_STR * falloff * (dt / 16); c.vy += (ddy / dd) * PULL_STR * falloff * (dt / 16) }
-                        if (dd < ACTIVATE_R && c.type === "cell") c.type = "active"
-                        if (dd < ATTRACT_R) c.energy = Math.min(1, c.energy + (1 - dd / ATTRACT_R) * 0.5 * (dt / 16) * 0.06)
-                    }
-
-                    c.energy += (mids * 1.2 + pulse * 0.8 - c.energy) * 0.22
-                    c.energy = Math.min(1, Math.max(0, c.energy))
-                    c.life -= (dt / 16) / c.maxLife * Math.max(0.3, 1 - totalE * 0.7)
-
-                    if (c.type === "spore") {
-                        c.sporeRadius -= (dt / 16) * 0.12
-                        if (c.sporeRadius <= 0.5) c.type = c.energy > 0.15 ? "active" : "cell"
-                    } else {
-                        if (c.type === "cell" && c.energy > 0.2) c.type = "active"
-                        else if (c.type === "active" && c.energy < 0.08 && (!mInside || Math.sqrt((mx - c.x) ** 2 + (my - c.y) ** 2) > ACTIVATE_R)) c.type = "cell"
-                    }
-                    if (c.life <= 0) { c.type = "decay"; c.decayAlpha = 1 }
-                } else {
-                    c.decayAlpha -= (dt / 16) * 0.045
-                    if (c.decayAlpha <= 0) { cells.splice(i, 1); continue }
-                }
-
-                const a = c.type === "decay" ? c.decayAlpha : Math.max(0, c.life)
-                if (c.type === "spore") {
-                    ctx.beginPath(); ctx.arc(c.x, c.y, Math.max(1, c.sporeRadius), 0, Math.PI * 2)
-                    ctx.strokeStyle = clrMain(a * (0.8 + pulse * 0.4)); ctx.lineWidth = 1.4; ctx.stroke()
-                    ctx.beginPath(); ctx.arc(c.x, c.y, 2.2, 0, Math.PI * 2)
-                    ctx.fillStyle = clrGlow(a); ctx.fill()
-                } else if (c.type === "active") {
-                    const glowR = 14 + pulse * 12
-                    const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, glowR)
-                    g.addColorStop(0, clrGlow(a * (0.4 + pulse * 0.5 + c.energy * 0.2))); g.addColorStop(1, "rgba(0,0,0,0)")
-                    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c.x, c.y, glowR, 0, Math.PI * 2); ctx.fill()
-                    ctx.beginPath(); ctx.arc(c.x, c.y, 2.5 + pulse * 1.5, 0, Math.PI * 2)
-                    ctx.fillStyle = clrMain(a); ctx.fill()
-                } else if (c.type === "cell") {
-                    ctx.beginPath(); ctx.arc(c.x, c.y, 2 + pulse * 0.8, 0, Math.PI * 2)
-                    ctx.fillStyle = clrConn(a * 0.75); ctx.fill()
-                } else if (c.type === "decay") {
-                    const s = 4.5; ctx.strokeStyle = clrDim(c.decayAlpha * 0.5); ctx.lineWidth = 1
-                    ctx.beginPath(); ctx.moveTo(c.x - s, c.y - s); ctx.lineTo(c.x + s, c.y + s)
-                    ctx.moveTo(c.x + s, c.y - s); ctx.lineTo(c.x - s, c.y + s); ctx.stroke()
-                }
-            }
-
-            if (cells.filter(c => c.type !== "decay").length < BIO.REPLENISH_MIN) {
-                const alivePop = cells.filter(c => c.type !== "decay")
-                for (let i = 0; i < BIO.REPLENISH_BATCH; i++) {
-                    if (alivePop.length > 0) {
-                        const ref = alivePop[Math.floor(Math.random() * alivePop.length)]
-                        const ang = Math.random() * Math.PI * 2, d = 30 + Math.random() * 80
-                        cells.push(makeCell(ref.x + Math.cos(ang) * d, ref.y + Math.sin(ang) * d))
-                    } else {
-                        cells.push(makeCell(W * 0.1 + Math.random() * W * 0.8, H * 0.1 + Math.random() * H * 0.8))
-                    }
-                }
-            }
-        }
-
-        rafRef.current = requestAnimationFrame(draw)
-        const ro = new ResizeObserver(init); ro.observe(canvas)
-        return () => {
-            cancelAnimationFrame(rafRef.current); ro.disconnect()
-            window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseleave", onLeave)
-        }
-    }, [analyser])
-
-    return <canvas ref={assignCanvas} style={{ position: "fixed", inset: 0, width: "100%", height: "100%", opacity: active ? 1 : 0.1, transition: "opacity 2.5s ease", pointerEvents: "none", zIndex: 0 }} />
-}
-
-function Legend() {
-    return (
-        <div style={{ position: "fixed", bottom: "28px", left: "32px", zIndex: 20, fontFamily: "'SF Mono','Courier New',monospace", fontSize: "13px", lineHeight: "1.8", color: "rgba(0,175,70,0.4)", pointerEvents: "none" }}>
-            {[["·", "cell"], ["•", "active cell"], ["o", "spore / new cell"], ["—", "connection"], ["×", "decay"]].map(([s, l]) => (
-                <div key={l}><span style={{ display: "inline-block", width: "16px" }}>{s}</span><span style={{ opacity: 0.7 }}>{l}</span></div>
-            ))}
-        </div>
-    )
-}
-
-function AudioHint({ playing }: { playing: boolean }) {
-    return (
-        <div style={{ position: "fixed", bottom: "78px", right: "32px", zIndex: 20, fontFamily: "'SF Mono','Courier New',monospace", fontSize: "11px", lineHeight: "1.75", color: "rgba(245,245,245,0.22)", pointerEvents: "none", textAlign: "right", opacity: playing ? 1 : 0, transition: "opacity 1.2s ease", maxWidth: "340px" }}>
-            <div style={{ marginBottom: "4px", opacity: 0.5, letterSpacing: "0.12em", textTransform: "uppercase", fontSize: "10px" }}>mouse → audio</div>
-            <div>Y — lowpass filter · top = open (18kHz) · bottom = closed (100Hz)</div>
-            <div>X — 16th-note stutter · left = off · right = 65% chop @ 128 BPM</div>
-        </div>
     )
 }
 
@@ -529,7 +217,318 @@ function DownloadModal({ url, duration, onClose, accentColor }: { url: string; d
     )
 }
 
-// ─── Right Panel ───────────────────────────────────────────────────────────────
+// ─── Audio Biosphere ───────────────────────────────────────────────────────────
+type CellType = "cell" | "active" | "spore" | "decay"
+type Cell = {
+    x: number; y: number; vx: number; vy: number
+    life: number; maxLife: number; energy: number
+    type: CellType; sporeRadius: number; decayAlpha: number
+    driftPhase: number       // unique oscillation phase for organic float
+    filterAffected: boolean  // 80% of spores respond to filter position
+}
+
+function makeCell(x: number, y: number, type: CellType = "cell"): Cell {
+    return {
+        x, y,
+        vx: (Math.random() - 0.5) * 0.55,
+        vy: (Math.random() - 0.5) * 0.55,
+        life: type === "spore" ? 1 : 0.6 + Math.random() * 0.4,
+        maxLife: 500 + Math.random() * 700, energy: 0, type,
+        sporeRadius: type === "spore" ? 8 + Math.random() * 12 : 0,
+        decayAlpha: 1,
+        driftPhase: Math.random() * Math.PI * 2,
+        filterAffected: Math.random() < 0.8,
+    }
+}
+
+const ZONE_COLS = 6
+const ZONE_ROWS = 4
+const MIN_PER_ZONE = 2
+
+function AudioBiosphere({ analyser, active, canvasRefOut }: {
+    analyser: AnalyserNode | null
+    active: boolean
+    canvasRefOut?: React.MutableRefObject<HTMLCanvasElement | null>
+}) {
+    const canvasRef = useRef<HTMLCanvasElement | null>(null)
+    const rafRef = useRef<number>(0)
+    const mouseRef = useRef({ x: -9999, y: -9999, inside: false })
+    const frameCount = useRef(0)
+    const bassSmooth = useRef(0)
+
+    const assignCanvas = (el: HTMLCanvasElement | null) => {
+        canvasRef.current = el
+        if (canvasRefOut) canvasRefOut.current = el
+    }
+
+    useEffect(() => {
+        const canvas = canvasRef.current
+        if (!canvas) return
+        const ctx = canvas.getContext("2d")!
+        let cells: Cell[] = [], W = 0, H = 0, spawnCd = 0
+
+        const init = () => {
+            W = canvas.offsetWidth; H = canvas.offsetHeight
+            canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio
+            ctx.scale(devicePixelRatio, devicePixelRatio)
+            cells = []
+            const cellW = W / ZONE_COLS, cellH = H / ZONE_ROWS
+            for (let row = 0; row < ZONE_ROWS; row++) {
+                for (let col = 0; col < ZONE_COLS; col++) {
+                    for (let k = 0; k < 2; k++) {
+                        cells.push(makeCell(
+                            col * cellW + cellW * 0.15 + Math.random() * cellW * 0.7,
+                            row * cellH + cellH * 0.15 + Math.random() * cellH * 0.7
+                        ))
+                    }
+                }
+            }
+            for (let i = 0; i < 9; i++) cells.push(makeCell(Math.random() * W, Math.random() * H))
+        }
+        init()
+
+        const onMove = (e: MouseEvent) => { mouseRef.current.x = e.clientX; mouseRef.current.y = e.clientY; mouseRef.current.inside = true }
+        const onLeave = () => { mouseRef.current.inside = false }
+        window.addEventListener("mousemove", onMove)
+        window.addEventListener("mouseleave", onLeave)
+
+        let lastTime = performance.now()
+        const draw = (now: number) => {
+            rafRef.current = requestAnimationFrame(draw)
+            frameCount.current++
+            const dt = Math.min(now - lastTime, 50); lastTime = now
+
+            let bass = 0, mids = 0, totalE = 0
+            if (analyser) {
+                const bins = new Uint8Array(analyser.frequencyBinCount); analyser.getByteFrequencyData(bins)
+                const n = bins.length, be = Math.floor(n * 0.12), me = Math.floor(n * 0.5)
+                for (let i = 0; i < be; i++) bass += bins[i]; bass /= be * 255
+                for (let i = be; i < me; i++) mids += bins[i]; mids /= (me - be) * 255
+                for (let i = 0; i < n; i++) totalE += bins[i]; totalE /= n * 255
+            }
+
+            bassSmooth.current = bass > bassSmooth.current
+                ? bassSmooth.current + (bass - bassSmooth.current) * 0.7
+                : bassSmooth.current * 0.88
+            const pulse = bassSmooth.current
+
+            const mx = mouseRef.current.x, my = mouseRef.current.y
+            const mInside = mouseRef.current.inside
+            const nmx = mx < 0 ? 0.5 : Math.max(0, Math.min(1, mx / W))
+            const nmy = my < 0 ? 0.5 : Math.max(0, Math.min(1, my / H))
+
+            // filterOpen: 1 = fully open (18kHz, bright), 0 = fully closed (100Hz, dark)
+            const filterOpen = 1 - nmy
+            // stutterDepth: 0 = no stutter, 1 = max stutter (matches audio stutter formula)
+            const stutterDepth = nmx > 0.06 ? (nmx - 0.06) / (1 - 0.06) : 0
+
+            // Trail alpha increases when filter is closed (dims faster = darker biosphere)
+            const trailAlpha = Math.min(0.55, 0.2 - pulse * 0.08 + (1 - filterOpen) * 0.18)
+            ctx.fillStyle = `rgba(10,10,10,${trailAlpha})`
+            ctx.fillRect(0, 0, W, H)
+
+            // Color palette from mouse X (hue) and Y (lightness)
+            const hue = Math.round(nmx * 260 + 80)
+            const sat = Math.round(72 + pulse * 22)
+            const lum = Math.round(50 - nmy * 14 + pulse * 16)
+            const clrConn   = (a: number) => `hsla(${hue},${sat}%,${lum}%,${a})`
+            const clrCell   = (a: number) => `hsla(${hue},${sat}%,${lum - 6}%,${a})`
+            const clrSpore  = (a: number) => `hsla(${hue},${sat + 8}%,${lum + 12}%,${a})`
+            const clrGlow   = (a: number) => `hsla(${hue},${sat + 10}%,${lum + 28}%,${a})`
+            const clrActive = (a: number) => `hsla(${hue},${sat + 12}%,${lum + 22}%,${a})`
+            const clrDecay  = (a: number) => `hsla(${hue},${sat - 20}%,${lum - 12}%,${a})`
+
+            const ATTRACT_R = 160, ACTIVATE_R = 70, PULL_STR = 0.018
+
+            spawnCd -= dt
+            const alive = cells.filter(c => c.type !== "decay")
+            if (bass > 0.12 && spawnCd <= 0 && alive.length < 160) {
+                const count = 2 + Math.floor(bass * 6)
+                for (let i = 0; i < count; i++) {
+                    const p = alive[Math.floor(Math.random() * alive.length)]
+                    const ang = Math.random() * Math.PI * 2, d = 20 + Math.random() * 80
+                    const s = makeCell(
+                        p ? p.x + Math.cos(ang) * d : Math.random() * W,
+                        p ? p.y + Math.sin(ang) * d : Math.random() * H,
+                        "spore"
+                    )
+                    s.vx = Math.cos(ang) * 0.3; s.vy = Math.sin(ang) * 0.3; s.energy = bass
+                    cells.push(s)
+                }
+                spawnCd = 100 + (1 - bass) * 100
+            }
+
+            const connD = 70 + totalE * 80
+            const connWidth = 0.5 + pulse * 1.5
+            for (let i = 0; i < cells.length - 1; i++) {
+                const a = cells[i]; if (a.type === "decay") continue
+                for (let j = i + 1; j < cells.length; j++) {
+                    const b = cells[j]; if (b.type === "decay") continue
+                    const dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy)
+                    if (d < connD) {
+                        const t = 1 - d / connD
+                        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y)
+                        ctx.strokeStyle = clrConn(t * t * (0.35 + pulse * 0.4) * Math.min(a.life, b.life))
+                        ctx.lineWidth = connWidth; ctx.stroke()
+                    }
+                }
+            }
+
+            for (let i = cells.length - 1; i >= 0; i--) {
+                const c = cells[i]
+                if (c.type !== "decay") {
+                    c.x += c.vx * (dt / 16); c.y += c.vy * (dt / 16)
+
+                    // Reduced friction so cells keep drifting (was 0.993)
+                    c.vx *= 0.995; c.vy *= 0.995
+
+                    // Organic floating: each cell oscillates on its own phase
+                    const driftStr = 0.013
+                    c.vx += Math.sin(now * 0.00065 + c.driftPhase) * driftStr * (dt / 16)
+                    c.vy += Math.cos(now * 0.00088 + c.driftPhase * 1.7) * driftStr * (dt / 16)
+
+                    // Gentle global field: all cells nudge slightly toward mouse quadrant
+                    if (mInside) {
+                        c.vx += (nmx - 0.5) * 0.006 * (dt / 16)
+                        c.vy += (nmy - 0.5) * 0.006 * (dt / 16)
+                    }
+
+                    if (c.x < 0) { c.x = 0; c.vx *= -0.5 } if (c.x > W) { c.x = W; c.vx *= -0.5 }
+                    if (c.y < 0) { c.y = 0; c.vy *= -0.5 } if (c.y > H) { c.y = H; c.vy *= -0.5 }
+
+                    if (mInside) {
+                        const ddx = mx - c.x, ddy = my - c.y, dd = Math.sqrt(ddx * ddx + ddy * ddy)
+                        if (dd < ATTRACT_R && dd > 1) {
+                            const falloff = (1 - dd / ATTRACT_R) * (1 - dd / ATTRACT_R)
+                            c.vx += (ddx / dd) * PULL_STR * falloff * (dt / 16)
+                            c.vy += (ddy / dd) * PULL_STR * falloff * (dt / 16)
+                        }
+                        if (dd < ACTIVATE_R && c.type === "cell") c.type = "active"
+                        if (dd < ATTRACT_R) c.energy = Math.min(1, c.energy + (1 - dd / ATTRACT_R) * 0.5 * (dt / 16) * 0.04)
+                    }
+
+                    c.energy += (mids * 1.4 + pulse * 0.6 - c.energy) * 0.14
+                    c.energy = Math.min(1, Math.max(0, c.energy))
+                    c.life -= (dt / 16) / c.maxLife * (1 + (1 - totalE) * 0.8)
+
+                    if (c.type === "spore") {
+                        c.sporeRadius -= (dt / 16) * 0.08
+                        if (c.sporeRadius <= 0.5) c.type = c.energy > 0.15 ? "active" : "cell"
+                    } else {
+                        if (c.type === "cell" && c.energy > 0.15) c.type = "active"
+                        else if (c.type === "active" && c.energy < 0.06 && (!mInside || Math.sqrt((mx - c.x) ** 2 + (my - c.y) ** 2) > ACTIVATE_R)) c.type = "cell"
+                    }
+                    if (c.life <= 0) { c.type = "decay"; c.decayAlpha = 1 }
+                } else {
+                    c.decayAlpha -= (dt / 16) * 0.04
+                    if (c.decayAlpha <= 0) { cells.splice(i, 1); continue }
+                }
+
+                const a = c.type === "decay" ? c.decayAlpha : Math.max(0, c.life)
+
+                if (c.type === "spore") {
+                    // Filter maps to size and brightness for 80% of spores
+                    const filterScale = c.filterAffected ? (0.25 + filterOpen * 0.75) : 1
+                    const effectiveR = Math.max(0.5, c.sporeRadius * filterScale)
+                    const baseAlpha = a * (0.7 + pulse * 0.5) * filterScale
+
+                    ctx.strokeStyle = clrSpore(baseAlpha)
+                    ctx.lineWidth = 1.2 + pulse * 0.8
+
+                    if (stutterDepth > 0.04 && effectiveR > 0.5) {
+                        // Jittered polygon — jaggedness scales with stutter depth
+                        const jitterAmt = stutterDepth * effectiveR * 0.45
+                        const segments = 20
+                        ctx.beginPath()
+                        for (let seg = 0; seg <= segments; seg++) {
+                            const angle = (seg / segments) * Math.PI * 2
+                            const jitter = (Math.random() - 0.5) * 2 * jitterAmt
+                            const r = Math.max(0.3, effectiveR + jitter)
+                            const px = c.x + Math.cos(angle) * r
+                            const py = c.y + Math.sin(angle) * r
+                            seg === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)
+                        }
+                        ctx.closePath()
+                        ctx.stroke()
+                    } else {
+                        ctx.beginPath()
+                        ctx.arc(c.x, c.y, effectiveR, 0, Math.PI * 2)
+                        ctx.stroke()
+                    }
+
+                    ctx.beginPath(); ctx.arc(c.x, c.y, 1.8, 0, Math.PI * 2)
+                    ctx.fillStyle = clrGlow(a * filterScale); ctx.fill()
+
+                } else if (c.type === "active") {
+                    const glowR = 12 + pulse * 14
+                    const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, glowR)
+                    g.addColorStop(0, clrGlow(a * (0.45 + pulse * 0.55))); g.addColorStop(1, "rgba(0,0,0,0)")
+                    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c.x, c.y, glowR, 0, Math.PI * 2); ctx.fill()
+                    ctx.beginPath(); ctx.arc(c.x, c.y, 2.5 + pulse * 1.5, 0, Math.PI * 2)
+                    ctx.fillStyle = clrActive(a); ctx.fill()
+                } else if (c.type === "cell") {
+                    ctx.beginPath(); ctx.arc(c.x, c.y, 1.5 + pulse * 0.8, 0, Math.PI * 2)
+                    ctx.fillStyle = clrCell(a * 0.7); ctx.fill()
+                } else if (c.type === "decay") {
+                    const s = 3.5; ctx.strokeStyle = clrDecay(c.decayAlpha * 0.55); ctx.lineWidth = 1
+                    ctx.beginPath()
+                    ctx.moveTo(c.x - s, c.y - s); ctx.lineTo(c.x + s, c.y + s)
+                    ctx.moveTo(c.x + s, c.y - s); ctx.lineTo(c.x - s, c.y + s)
+                    ctx.stroke()
+                }
+            }
+
+            // Darkness overlay: biosphere dims when filter is closed
+            const filterDark = (1 - filterOpen) * 0.42
+            if (filterDark > 0.02) {
+                ctx.fillStyle = `rgba(0,0,0,${filterDark})`
+                ctx.fillRect(0, 0, W, H)
+            }
+
+            if (frameCount.current % 90 === 0) {
+                const zoneW = W / ZONE_COLS, zoneH = H / ZONE_ROWS
+                const counts = new Array(ZONE_COLS * ZONE_ROWS).fill(0)
+                for (const c of cells) {
+                    if (c.type === "decay") continue
+                    const zc = Math.min(ZONE_COLS - 1, Math.floor(c.x / zoneW))
+                    const zr = Math.min(ZONE_ROWS - 1, Math.floor(c.y / zoneH))
+                    counts[zr * ZONE_COLS + zc]++
+                }
+                for (let zr = 0; zr < ZONE_ROWS; zr++) {
+                    for (let zc = 0; zc < ZONE_COLS; zc++) {
+                        if (counts[zr * ZONE_COLS + zc] < MIN_PER_ZONE) {
+                            cells.push(makeCell(
+                                zc * zoneW + zoneW * 0.15 + Math.random() * zoneW * 0.7,
+                                zr * zoneH + zoneH * 0.15 + Math.random() * zoneH * 0.7
+                            ))
+                        }
+                    }
+                }
+            }
+        }
+
+        rafRef.current = requestAnimationFrame(draw)
+        const ro = new ResizeObserver(init); ro.observe(canvas)
+        return () => {
+            cancelAnimationFrame(rafRef.current); ro.disconnect()
+            window.removeEventListener("mousemove", onMove)
+            window.removeEventListener("mouseleave", onLeave)
+        }
+    }, [analyser])
+
+    return <canvas ref={assignCanvas} style={{ position: "fixed", inset: 0, width: "100%", height: "100%", opacity: active ? 1 : 0.12, transition: "opacity 2.5s ease", pointerEvents: "none", zIndex: 0 }} />
+}
+
+function Legend() {
+    return (
+        <div style={{ position: "fixed", bottom: "28px", left: "32px", zIndex: 20, fontFamily: "'SF Mono','Courier New',monospace", fontSize: "13px", lineHeight: "1.8", color: "rgba(0,175,70,0.4)", pointerEvents: "none" }}>
+            {[["·", "cell"], ["•", "active cell"], ["o", "spore / new cell"], ["—", "connection"], ["×", "decay"]].map(([s, l]) => (
+                <div key={l}><span style={{ display: "inline-block", width: "16px" }}>{s}</span><span style={{ opacity: 0.7 }}>{l}</span></div>
+            ))}
+        </div>
+    )
+}
+
 function RightPanel({ visible, accentColor, typingSpeed }: { visible: boolean; accentColor: string; typingSpeed: number }) {
     const scrollRef = useRef<HTMLDivElement>(null)
     const [atBottom, setAtBottom] = useState(false)
@@ -591,7 +590,6 @@ function RightPanel({ visible, accentColor, typingSpeed }: { visible: boolean; a
     )
 }
 
-// ─── Main component ────────────────────────────────────────────────────────────
 export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0a5" }: { typingSpeed?: number; accentColor?: string }) {
     const isCanvas = RenderTarget.current() === RenderTarget.canvas
     const [phaseIndex, setPhaseIndex] = useState(0)
@@ -605,7 +603,6 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
     const [musicPlaying, setMusicPlaying] = useState(false)
     const [analyser, setAnalyser] = useState<AnalyserNode | null>(null)
     const [panelVisible, setPanelVisible] = useState(false)
-    const [projectsVisible, setProjectsVisible] = useState(false)
 
     // ── Recording state ──
     const [isRecording, setIsRecording] = useState(false)
@@ -643,13 +640,11 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
         }
     }, [phaseIndex, isTyping])
     useEffect(() => {
-        if (phaseIndex === 2 && !isTyping) { const t = setTimeout(() => setProjectsVisible(true), 1200); return () => clearTimeout(t) }
-    }, [phaseIndex, isTyping])
-    useEffect(() => {
         const onMove = (e: MouseEvent) => { mouseAudioRef.current.x = e.clientX / window.innerWidth; mouseAudioRef.current.y = e.clientY / window.innerHeight }
         window.addEventListener("mousemove", onMove, { passive: true }); return () => window.removeEventListener("mousemove", onMove)
     }, [])
 
+    // ── Recording cleanup ──
     useEffect(() => {
         return () => {
             if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop()
@@ -720,6 +715,7 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
             setRecordingTime(recordingTimeRef.current)
         }, 1000)
 
+        // Auto-stop at 60s
         setTimeout(() => {
             if (mediaRecorderRef.current?.state === "recording") stopRecording()
         }, 60000)
@@ -730,6 +726,17 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
         setRecordedDuration(recordingTimeRef.current)
         setIsRecording(false)
         mediaRecorderRef.current?.stop()
+    }
+
+    const handleToggleMusic = () => {
+        if (musicPlaying) { stopPlayback(); setMusicPlaying(false) }
+        else { startPlayback().then(node => { if (node) { setAnalyser(node); setMusicPlaying(true) } }) }
+    }
+    const ensureAudioStarted = () => {
+        if (isCanvas) return
+        const audio = getAudio()
+        if (!audio.paused) { if (!analyser) setAnalyser(getAnalyser()); return }
+        startPlayback().then(node => { if (node) { setAnalyser(node); setMusicPlaying(true) } })
     }
 
     useEffect(() => {
@@ -745,7 +752,6 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
             audioVals.current.bass += (bassRaw - audioVals.current.bass) * 0.25
             audioVals.current.energy += (totalRaw - audioVals.current.energy) * 0.1
             const { bass, energy } = audioVals.current
-
             const sk = shakeRef.current
             const transient = bass - sk.prevBass; sk.prevBass = bass
             if (transient > 0.08 && sk.decay <= 0) { sk.x = (Math.random() - 0.5) * bass * 5; sk.y = (Math.random() - 0.5) * bass * 3; sk.decay = 10 }
@@ -754,23 +760,19 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
             if (el) { el.style.transform = `translate(${sk.x.toFixed(2)}px,${sk.y.toFixed(2)}px)`; el.style.textShadow = `0 0 ${(energy * 10).toFixed(1)}px rgba(245,245,245,${(energy * 0.35).toFixed(2)})` }
             const vg = vignetteRef.current
             if (vg) { const sz = 48 + energy * 8; vg.style.background = `radial-gradient(ellipse ${sz}% ${sz + 5}% at 50% 50%, rgba(10,10,10,0.92) 0%, rgba(10,10,10,0.45) 60%, transparent 100%)` }
-
             glitchCooldown.current -= 16
-            if (bass > 0.4 && glitchCooldown.current <= 0 && Math.random() < bass * 0.4) {
-                glitchCooldown.current = 300 + Math.random() * 400; setGlitchedText("TRIGGER")
-            }
-
-            const pCtx = window.__pf_ctx; if (!pCtx) return
-            const filter = window.__pf_filter; const stutter = window.__pf_stutter
+            if (bass > 0.4 && glitchCooldown.current <= 0 && Math.random() < bass * 0.4) { glitchCooldown.current = 300 + Math.random() * 400; setGlitchedText("TRIGGER") }
+            const pCtx = window.__pf_ctx; const filter = window.__pf_filter; const stutter = window.__pf_stutter
+            if (!pCtx) return
             const mx = mouseAudioRef.current.x, my = mouseAudioRef.current.y, now = pCtx.currentTime
-            if (filter) filter.frequency.setTargetAtTime(80 * Math.pow(220, 1 - my), now, 0.06)
+            if (filter) { const freq = 100 * Math.pow(180, 1 - my); filter.frequency.setTargetAtTime(freq, now, 0.08) }
             if (stutter) {
-                const dead = 0.05
+                const dead = 0.06
                 if (mx > dead) {
                     const depth = (mx - dead) / (1 - dead)
                     const sixteenth = 60 / STUTTER_BPM / 4
                     const ph = (now % sixteenth) / sixteenth
-                    const gateOpen = ph < (1 - depth * 0.7)
+                    const gateOpen = ph < (1 - depth * 0.65)
                     if (gateOpen !== stutterGateRef.current) {
                         stutterGateRef.current = gateOpen
                         stutter.gain.cancelScheduledValues(now); stutter.gain.setValueAtTime(stutter.gain.value, now)
@@ -799,48 +801,24 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
     }, [glitchedText])
 
     useEffect(() => { const t = setInterval(() => setCursorOn(v => !v), 520); return () => clearInterval(t) }, [])
-
     useEffect(() => {
         charIndex.current = 0; setDisplayed(""); setIsTyping(true)
         const target = phase.text
-        const t = setInterval(() => {
-            charIndex.current++; setDisplayed(target.slice(0, charIndex.current))
-            if (charIndex.current >= target.length) { clearInterval(t); setIsTyping(false) }
-        }, typingSpeed)
+        const t = setInterval(() => { charIndex.current++; setDisplayed(target.slice(0, charIndex.current)); if (charIndex.current >= target.length) { clearInterval(t); setIsTyping(false) } }, typingSpeed)
         return () => clearInterval(t)
     }, [phaseIndex])
-
     useEffect(() => {
         if (nState !== "sassy") return
         let i = 0; setSassyDisplayed("")
         const t = setInterval(() => {
             i++; setSassyDisplayed(SASSY_RESPONSE.slice(0, i))
-            if (i >= SASSY_RESPONSE.length) {
-                clearInterval(t)
-                setTimeout(() => { setNState("main"); setHistory(h => [...h, { text: SASSY_RESPONSE, dim: true }]); setSassyDisplayed(""); setPhaseIndex(1) }, 900)
-            }
+            if (i >= SASSY_RESPONSE.length) { clearInterval(t); setTimeout(() => { setNState("main"); setHistory(h => [...h, { text: SASSY_RESPONSE, dim: true }]); setSassyDisplayed(""); setPhaseIndex(1) }, 900) }
         }, typingSpeed)
         return () => clearInterval(t)
     }, [nState])
 
-    const handleToggleMusic = () => {
-        if (musicPlaying) { stopPlayback(); setMusicPlaying(false) }
-        else { startPlayback().then(result => { if (result) { setAnalyser(result.analyser); setMusicPlaying(true) } }) }
-    }
-    const ensureAudioStarted = () => {
-        if (isCanvas) return
-        const audio = getAudio()
-        if (!audio.paused) { if (!analyser) setAnalyser(getAnalyser()); return }
-        startPlayback().then(result => { if (result) { setAnalyser(result.analyser); setMusicPlaying(true) } })
-    }
-    const handleY = () => {
-        if (isTyping || phaseIndex >= PHASES.length - 1) return
-        ensureAudioStarted(); setHistory(h => [...h, { text: phase.text }, { text: "> Y", dim: true }]); setPhaseIndex(1)
-    }
-    const handleN = () => {
-        if (isTyping) return
-        ensureAudioStarted(); setHistory(h => [...h, { text: phase.text }, { text: "> N", dim: true }]); setNState("sassy")
-    }
+    const handleY = () => { if (isTyping || phaseIndex >= PHASES.length - 1) return; ensureAudioStarted(); setHistory(h => [...h, { text: phase.text }, { text: "> Y", dim: true }]); setPhaseIndex(1) }
+    const handleN = () => { if (isTyping) return; ensureAudioStarted(); setHistory(h => [...h, { text: phase.text }, { text: "> N", dim: true }]); setNState("sassy") }
 
     const lineBase: React.CSSProperties = { fontSize: "13px", lineHeight: "1.7", color: "rgba(245,245,245,0.92)", whiteSpace: "pre-wrap", marginBottom: "4px" }
     const dimLine: React.CSSProperties = { ...lineBase, color: "rgba(245,245,245,0.3)" }
@@ -857,11 +835,9 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
             <AudioBiosphere analyser={analyser} active={musicPlaying} canvasRefOut={biosphereCanvasRef} />
             <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 3, backgroundImage: "repeating-linear-gradient(0deg, rgba(0,0,0,0.07) 0px, rgba(0,0,0,0.07) 1px, transparent 1px, transparent 4px)" }} />
             <div ref={vignetteRef} style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1, background: "radial-gradient(ellipse 48% 53% at 50% 50%, rgba(10,10,10,0.92) 0%, rgba(10,10,10,0.45) 60%, transparent 100%)" }} />
-
             <div style={{ display: "flex", alignItems: "flex-start", gap: "72px", width: "100%", maxWidth: "1100px", zIndex: 4, justifyContent: panelVisible ? "flex-start" : "center" }}>
                 <div ref={terminalRef} style={{ width: "560px", flexShrink: 0, willChange: "transform" }}>
                     {history.map((line, i) => <p key={i} style={line.dim ? dimLine : { ...lineBase, marginBottom: "12px" }}>{line.text}</p>)}
-
                     {phaseIndex === 0 && nState === "idle" && (
                         <div>
                             <p style={{ ...lineBase, marginBottom: "20px" }}>{activeText}{isTyping && <Cursor visible={cursorOn} />}</p>
@@ -875,29 +851,21 @@ export default function TerminalConsole({ typingSpeed = 35, accentColor = "#b5f0
                             )}
                         </div>
                     )}
-
                     {nState === "sassy" && <p style={{ ...lineBase, color: "rgba(245,245,245,0.55)", marginBottom: "20px" }}>{sassyDisplayed}<Cursor visible={cursorOn} /></p>}
-
                     {phaseIndex >= 1 && nState !== "sassy" && (
                         <div>
                             {PHASES[phaseIndex].input && <p style={dimLine}>&gt; {PHASES[phaseIndex].input}</p>}
                             <p style={{ ...lineBase, marginBottom: "20px" }}>
                                 {phaseIndex === 2 && !isTyping ? <LogoLine accentColor={accentColor} /> : <>{activeText}{isTyping && <Cursor visible={cursorOn} />}</>}
                             </p>
-                            {!isTyping && phaseIndex < 2 && <Cursor visible={cursorOn} />}
-                            {phaseIndex === 2 && !projectsVisible && !isTyping && <Cursor visible={cursorOn} />}
+                            {!isTyping && <Cursor visible={cursorOn} />}
                         </div>
                     )}
-
-                    <ProjectListing visible={projectsVisible} accentColor={accentColor} />
                 </div>
-
                 <RightPanel visible={panelVisible} accentColor={accentColor} typingSpeed={typingSpeed} />
             </div>
-
             <Legend />
-            {!isCanvas && <AudioHint playing={musicPlaying} />}
-            {!isCanvas && <MusicToggle playing={musicPlaying} onToggle={handleToggleMusic} accentColor={accentColor} />}
+            <MusicToggle playing={musicPlaying} onToggle={handleToggleMusic} accentColor={accentColor} />
             {!isCanvas && <RecButton isRecording={isRecording} time={recordingTime} onStart={startRecording} onStop={stopRecording} />}
             {showModal && downloadUrl && (
                 <DownloadModal
