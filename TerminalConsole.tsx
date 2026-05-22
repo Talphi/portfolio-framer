@@ -322,8 +322,7 @@ function AudioBiosphere({ analyser, active, canvasRefOut }: {
             // stutterDepth: 0 = no stutter, 1 = max stutter (matches audio stutter formula)
             const stutterDepth = nmx > 0.06 ? (nmx - 0.06) / (1 - 0.06) : 0
 
-            // Trail alpha increases when filter is closed (dims faster = darker biosphere)
-            const trailAlpha = Math.min(0.55, 0.2 - pulse * 0.08 + (1 - filterOpen) * 0.18)
+            const trailAlpha = Math.max(0.1, 0.2 - pulse * 0.08)
             ctx.fillStyle = `rgba(10,10,10,${trailAlpha})`
             ctx.fillRect(0, 0, W, H)
 
@@ -393,6 +392,17 @@ function AudioBiosphere({ analyser, active, canvasRefOut }: {
                         c.vy += (nmy - 0.5) * 0.006 * (dt / 16)
                     }
 
+                    // Filter constriction: pull all cells toward centre as filter closes
+                    const constriction = (1 - filterOpen) * 0.014
+                    if (constriction > 0.0001) {
+                        const toCx = W / 2 - c.x, toCy = H / 2 - c.y
+                        const distToC = Math.sqrt(toCx * toCx + toCy * toCy)
+                        if (distToC > 1) {
+                            c.vx += (toCx / distToC) * constriction * (dt / 16)
+                            c.vy += (toCy / distToC) * constriction * (dt / 16)
+                        }
+                    }
+
                     if (c.x < 0) { c.x = 0; c.vx *= -0.5 } if (c.x > W) { c.x = W; c.vx *= -0.5 }
                     if (c.y < 0) { c.y = 0; c.vy *= -0.5 } if (c.y > H) { c.y = H; c.vy *= -0.5 }
 
@@ -430,7 +440,7 @@ function AudioBiosphere({ analyser, active, canvasRefOut }: {
                     // Filter maps to size and brightness for 80% of spores
                     const filterScale = c.filterAffected ? (0.25 + filterOpen * 0.75) : 1
                     const effectiveR = Math.max(0.5, c.sporeRadius * filterScale)
-                    const baseAlpha = a * (0.7 + pulse * 0.5) * filterScale
+                    const baseAlpha = a * (0.7 + pulse * 0.5)
 
                     ctx.strokeStyle = clrSpore(baseAlpha)
                     ctx.lineWidth = 1.2 + pulse * 0.8
@@ -457,7 +467,7 @@ function AudioBiosphere({ analyser, active, canvasRefOut }: {
                     }
 
                     ctx.beginPath(); ctx.arc(c.x, c.y, 1.8, 0, Math.PI * 2)
-                    ctx.fillStyle = clrGlow(a * filterScale); ctx.fill()
+                    ctx.fillStyle = clrGlow(a); ctx.fill()
 
                 } else if (c.type === "active") {
                     const glowR = 12 + pulse * 14
@@ -476,13 +486,6 @@ function AudioBiosphere({ analyser, active, canvasRefOut }: {
                     ctx.moveTo(c.x + s, c.y - s); ctx.lineTo(c.x - s, c.y + s)
                     ctx.stroke()
                 }
-            }
-
-            // Darkness overlay: biosphere dims when filter is closed
-            const filterDark = (1 - filterOpen) * 0.42
-            if (filterDark > 0.02) {
-                ctx.fillStyle = `rgba(0,0,0,${filterDark})`
-                ctx.fillRect(0, 0, W, H)
             }
 
             if (frameCount.current % 90 === 0) {
